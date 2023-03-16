@@ -23,6 +23,19 @@ from deep_sort import preprocessing, nn_matching
 from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 from tools import generate_detections as gdet
+
+import pickle
+import csv
+
+class TrackObj():
+  def __init__(self, id, cls, xmin, ymin, xmax, ymax):
+    self.id = id
+    self.cls = cls
+    self.xmin= xmin
+    self.ymin = ymin
+    self.xmax = xmax
+    self.ymax = ymax
+
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
                     'path to weights file')
@@ -91,6 +104,8 @@ def main(_argv):
         out = cv2.VideoWriter(FLAGS.output, codec, fps, (width, height))
 
     frame_num = 0
+    frames = []
+
     # while video is running
     while True:
         return_value, frame = vid.read()
@@ -198,11 +213,15 @@ def main(_argv):
 
         # Call the tracker
         tracker.predict()
+        print("tracker count:",len(tracker.tracks)) #count check
+        
         tracker.update(detections)
-
+        print("tracker count:",len(tracker.tracks)) #count check
+        
         # update tracks
+        objs = []
         for track in tracker.tracks:
-            if not track.is_confirmed() or track.time_since_update > 8:
+            if not track.is_confirmed() or track.time_since_update > 30:
                 continue 
             bbox = track.to_tlbr()
             class_name = track.get_class()
@@ -212,29 +231,4 @@ def main(_argv):
             color = [i * 255 for i in color]
             cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
             cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*17, int(bbox[1])), color, -1)
-            cv2.putText(frame, class_name + "-" + str(track.track_id),(int(bbox[0]), int(bbox[1]-10)),0, 0.75, (255,255,255),2)
-
-        # if enable info flag then print details about each track
-            if FLAGS.info:
-                print("Tracker ID: {}, Class: {},  BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id), class_name, (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))))
-
-        # calculate frames per second of running detections
-        fps = 1.0 / (time.time() - start_time)
-        print("FPS: %.2f" % fps)
-        result = np.asarray(frame)
-        result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        
-        if not FLAGS.dont_show:
-            cv2.imshow("Output Video", result)
-        
-        # if output flag is set, save video file
-        if FLAGS.output:
-            out.write(result)
-        if cv2.waitKey(1) & 0xFF == ord('q'): break
-    cv2.destroyAllWindows()
-
-if __name__ == '__main__':
-    try:
-        app.run(main)
-    except SystemExit:
-        pass
+            cv2.putText(frame, class_name + "-" + str(track.track_id)
