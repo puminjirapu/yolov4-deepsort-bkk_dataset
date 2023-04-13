@@ -27,9 +27,10 @@ from tools import generate_detections as gdet
 import pickle
 
 class TrackObj():
-  def __init__(self, id, cls, xmin, ymin, xmax, ymax):
+  def __init__(self, id, cls, conf, xmin, ymin, xmax, ymax):
     self.id = id
     self.cls = cls
+    self.conf = conf
     self.xmin= xmin
     self.ymin = ymin
     self.xmax = xmax
@@ -221,6 +222,7 @@ def main(_argv):
                 continue 
             bbox = track.to_tlbr()
             class_name = track.get_class()
+            class_confidence = track.get_confidence()
             
         # draw bbox on screen
             color = colors[int(track.track_id) % len(colors)]
@@ -231,10 +233,10 @@ def main(_argv):
 
         # if enable info flag then print details about each track
             if FLAGS.info:
-                print("Tracker ID: {}, Class: {},  BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id), class_name, (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))))
+                print("Tracker ID: {}, Class: {}, Confidence: {:.2f}, BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id), class_name, round(class_confidence, 2), (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))))
         
         # create TrackObj
-            obj = TrackObj(track.track_id, class_name, int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]) )
+            obj = TrackObj(track.track_id, class_name, class_confidence, int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]) )
             objs.append(obj)
         
         frames.append(objs)
